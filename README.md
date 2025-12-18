@@ -1,4 +1,4 @@
-# Conteneurisation-et-gestion-des-workloads-avec-Magnum
+# Conteneurisation et gestion des workloads avec Magnum
 Projet de conteneurisation et gestion des workloads avec OpenStack Magnum
 
 
@@ -7,3 +7,5 @@ Projet de conteneurisation et gestion des workloads avec OpenStack Magnum
 • Déployer un cluster Kubernetes ou Docker Swarm via Magnum et automatiser sa gestion
 
 • Intégrer Magnum avec Heat pour orchestrer des infrastructures hybrides VM + conteneurs
+
+# NB: README à mettre à jour progressivement par l'équipe.
