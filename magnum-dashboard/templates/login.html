@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MagnumDash — Connexion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-void: #050810;
+  --bg-deep: #080d1a;
+  --bg-card: #0d1526;
+  --border: #1a2a45;
+  --border-bright: #1e3a6e;
+  --accent-cyan: #00d4ff;
+  --accent-teal: #00ff9d;
+  --text-primary: #e8f0fe;
+  --text-secondary: #7a9cbf;
+  --text-muted: #3a5570;
+  --status-err: #ff3b5c;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Animated grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+/* Glow orbs */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.12;
+}
+.orb-1 {
+  width: 500px; height: 500px;
+  background: var(--accent-cyan);
+  top: -150px; left: -100px;
+  animation: orbFloat1 8s ease-in-out infinite;
+}
+.orb-2 {
+  width: 400px; height: 400px;
+  background: var(--accent-teal);
+  bottom: -100px; right: -80px;
+  animation: orbFloat2 10s ease-in-out infinite;
+}
+
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(30px, 20px); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-20px, -30px); }
+}
+
+/* Login container */
+.login-wrap {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  animation: fadeUp 500ms ease forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo */
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo-icon-big {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-teal));
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 14px;
+  box-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+}
+
+.login-app-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+}
+
+.login-app-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Card */
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 212, 255, 0.05);
+}
+
+.login-card-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 212, 255, 0.03);
+}
+
+.login-card-header-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.login-card-header-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.login-card-body {
+  padding: 28px 24px;
+}
+
+/* Form elements */
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+  transition: color 150ms;
+}
+
+.form-control {
+  width: 100%;
+  background: #080d1a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px 10px 38px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.form-control:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.form-control:focus ~ .input-icon,
+.input-wrap:focus-within .input-icon {
+  color: var(--accent-cyan);
+}
+
+.form-control::placeholder { color: var(--text-muted); }
+
+/* Password toggle */
+.pw-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: color 150ms;
+}
+.pw-toggle:hover { color: var(--text-secondary); }
+
+/* Alert error */
+.alert-error {
+  background: rgba(255, 59, 92, 0.08);
+  border: 1px solid rgba(255, 59, 92, 0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--status-err);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Submit button */
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
+  color: #050810;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all 150ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-login:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.35);
+}
+
+.btn-login:active { transform: translateY(0); }
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Divider info */
+.login-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.login-footer span {
+  display: inline-block;
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin: 0 2px;
+  color: var(--accent-cyan);
+  font-size: 10px;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(5,8,16,0.3);
+  border-top-color: #050810;
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* OS info bar */
+.os-info-bar {
+  margin-top: 24px;
+  padding: 10px 16px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.os-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  animation: pulse 2s infinite;
+  display: inline-block;
+  margin-right: 6px;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="login-wrap">
+
+  <!-- Logo -->
+  <div class="login-logo">
+    <div class="logo-icon-big">⚡</div>
+    <div class="login-app-name">MagnumDash</div>
+    <div class="login-app-sub">OpenStack Container Manager</div>
+  </div>
+
+  <!-- Card -->
+  <div class="login-card">
+    <div class="login-card-header">
+      <div class="login-card-header-title">Authentification requise</div>
+      <div class="login-card-header-sub">Connectez-vous pour accéder au tableau de bord</div>
+    </div>
+    <div class="login-card-body">
+
+      {% if error %}
+      <div class="alert-error">
+        <span>✕</span> {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="POST" action="/login" id="login-form">
+        <div class="form-group">
+          <label class="form-label">Nom d'utilisateur</label>
+          <div class="input-wrap">
+            <span class="input-icon">◈</span>
+            <input
+              type="text"
+              name="username"
+              class="form-control"
+              placeholder="admin"
+              value="{{ request.form.get('username', '') }}"
+              autocomplete="username"
+              required
+              autofocus
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mot de passe</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔑</span>
+            <input
+              type="password"
+              name="password"
+              id="pw-input"
+              class="form-control"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              required
+            >
+            <button type="button" class="pw-toggle" onclick="togglePw()" id="pw-btn" title="Afficher/masquer">
+              👁
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="btn-submit">
+          <span id="btn-text">→ Se connecter</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- OpenStack info -->
+  <div class="os-info-bar">
+    <div>
+      <span class="os-dot"></span>
+      OpenStack Auth
+    </div>
+    <div>Keystone <span>v3</span> · Magnum <span>container-infra</span></div>
+  </div>
+
+  <div class="login-footer">
+    Université Saint Jean — MagnumDash v1.0<br>
+    Authentification via <span>OpenStack Keystone</span>
+  </div>
+
+</div>
+
+<script>
+function togglePw() {
+  const inp = document.getElementById('pw-input');
+  const btn = document.getElementById('pw-btn');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+document.getElementById('login-form').addEventListener('submit', function() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Vérification...';
+});
+</script>
+</body>
+</html>

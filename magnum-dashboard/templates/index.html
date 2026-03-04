@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}Vue générale{% endblock %}
+
+{% block content %}
+<!-- Stats Grid -->
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card" style="--accent-color: var(--accent-cyan)">
+    <div class="stat-label">Total Clusters</div>
+    <div class="stat-value text-cyan" id="stat-clusters">—</div>
+    <div class="stat-sub" id="stat-clusters-sub">Chargement...</div>
+  </div>
+  <div class="stat-card" style="--accent-color: var(--status-ok)">
+    <div class="stat-label">Clusters Actifs</div>
+    <div class="stat-value text-green" id="stat-running">—</div>
+    <div class="stat-sub">CREATE_COMPLETE</div>
+  </div>
+  <div class="stat-card" style="--accent-color: var(--accent-orange)">
+    <div class="stat-label">Stacks Heat</div>
+    <div class="stat-value" id="stat-stacks">—</div>
+    <div class="stat-sub" id="stat-stacks-sub">Stacks hybrides</div>
+  </div>
+  <div class="stat-card" style="--accent-color: var(--status-warn)">
+    <div class="stat-label">Instances Nova</div>
+    <div class="stat-value" id="stat-servers">—</div>
+    <div class="stat-sub" id="stat-servers-sub">VM en cours</div>
+  </div>
+</div>
+
+<!-- Ressources Compute -->
+<div class="mb-6">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">◈ Ressources Compute</span>
+      <span class="text-xs text-muted">Quotas Nova</span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px;" id="compute-metrics">
+        <div class="loading-state"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Two columns: clusters + stacks -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+
+  <!-- Clusters récents -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⬡ Clusters Récents</span>
+      <a href="/clusters" class="btn btn-ghost btn-sm">Voir tout →</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Status</th>
+            <th>Nodes</th>
+            <th>Créé</th>
+          </tr>
+        </thead>
+        <tbody id="recent-clusters">
+          <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Stacks récentes -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⬢ Stacks Heat Récentes</span>
+      <a href="/stacks" class="btn btn-ghost btn-sm">Voir tout →</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Status</th>
+            <th>Créée</th>
+          </tr>
+        </thead>
+        <tbody id="recent-stacks">
+          <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Alarmes Aodh -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">◉ Alarmes Actives</span>
+    <a href="/monitoring" class="btn btn-ghost btn-sm">Gérer →</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Nom</th><th>Type</th><th>État</th><th>Activée</th></tr>
+      </thead>
+      <tbody id="alarms-table">
+        <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadData() {
+  await Promise.all([loadSummary(), loadCompute(), loadClusters(), loadStacks(), loadAlarms()]);
+}
+
+async function loadSummary() {
+  try {
+    const d = await api('GET', '/api/monitoring/summary');
+    document.getElementById('stat-clusters').textContent = d.clusters?.total ?? '—';
+    document.getElementById('stat-clusters-sub').textContent = `${d.clusters?.error ?? 0} en erreur`;
+    document.getElementById('stat-running').textContent = d.clusters?.running ?? '—';
+    document.getElementById('stat-stacks').textContent = d.stacks?.total ?? '—';
+    document.getElementById('stat-stacks-sub').textContent = `${d.stacks?.failed ?? 0} échouées`;
+    document.getElementById('stat-servers').textContent = d.compute?.servers ?? '—';
+    document.getElementById('stat-servers-sub').textContent = `${d.compute?.active ?? 0} actives`;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function loadCompute() {
+  try {
+    const d = await api('GET', '/api/monitoring/compute');
+    if (d.error) throw new Error(d.error);
+    const el = document.getElementById('compute-metrics');
+    const pct = (used, total) => total > 0 ? Math.round((used/total)*100) : 0;
+    el.innerHTML = [
+      { label: 'vCPU', used: d.vcpus?.used, total: d.vcpus?.total },
+      { label: 'RAM (Mo)', used: d.ram?.used, total: d.ram?.total },
+      { label: 'Instances', used: d.instances?.used, total: d.instances?.total },
+    ].map(m => {
+      const p = pct(m.used, m.total);
+      const color = p > 85 ? 'var(--status-err)' : p > 60 ? 'var(--status-warn)' : 'var(--accent-cyan)';
+      return `<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span class="text-xs text-muted">${m.label}</span>
+          <span class="text-xs" style="color:${color}">${m.used ?? '?'} / ${m.total ?? '?'}</span>
+        </div>
+        <div class="progress"><div class="progress-bar" style="width:${p}%;background:${color}"></div></div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('compute-metrics').innerHTML = `<div class="text-muted text-xs">${e.message}</div>`;
+  }
+}
+
+async function loadClusters() {
+  try {
+    const d = await api('GET', '/api/clusters/');
+    const tbody = document.getElementById('recent-clusters');
+    if (!d.clusters?.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">⬡</div><p>Aucun cluster</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = d.clusters.slice(0, 5).map(c => `
+      <tr>
+        <td><span class="mono truncate" title="${c.id}">${c.name}</span></td>
+        <td>${statusBadge(c.status)}</td>
+        <td><span class="text-cyan">${c.node_count}</span> <span class="text-muted text-xs">workers</span></td>
+        <td class="text-muted">${timeAgo(c.created_at)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('recent-clusters').innerHTML = `<tr><td colspan="4" class="text-muted text-xs" style="padding:20px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadStacks() {
+  try {
+    const d = await api('GET', '/api/stacks/');
+    const tbody = document.getElementById('recent-stacks');
+    if (!d.stacks?.length) {
+      tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">⬢</div><p>Aucune stack</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = d.stacks.slice(0, 5).map(s => `
+      <tr>
+        <td><span class="truncate">${s.name}</span></td>
+        <td>${statusBadge(s.status)}</td>
+        <td class="text-muted">${timeAgo(s.created_at)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('recent-stacks').innerHTML = `<tr><td colspan="3" class="text-muted text-xs" style="padding:20px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadAlarms() {
+  try {
+    const d = await api('GET', '/api/monitoring/alarms');
+    const tbody = document.getElementById('alarms-table');
+    const alarms = d.alarms || [];
+    if (!alarms.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">◉</div><p>Aucune alarme configurée</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = alarms.map(a => `
+      <tr>
+        <td>${a.name}</td>
+        <td class="text-muted">${a.type}</td>
+        <td>${statusBadge(a.state)}</td>
+        <td>${a.enabled ? '<span class="badge badge-ok">Oui</span>' : '<span class="badge badge-muted">Non</span>'}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('alarms-table').innerHTML = `<tr><td colspan="4" class="text-muted text-xs" style="padding:20px">${e.message}</td></tr>`;
+  }
+}
+
+loadData();
+setInterval(loadData, 30000); // auto-refresh every 30s
+</script>
+{% endblock %}

@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}Stacks Heat{% endblock %}
+{% block page_title %}Stacks Heat Hybrides{% endblock %}
+{% block breadcrumb %}Heat › Stacks{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <span class="text-muted text-xs">Orchestration combinant VMs classiques et clusters Magnum dans une même stack déclarative.</span>
+  <div class="flex gap-2">
+    <button class="btn btn-ghost" onclick="openModal('modal-custom-stack')">+ Stack Personnalisée</button>
+    <button class="btn btn-primary" onclick="openModal('modal-hybrid-stack')">⬢ Stack Hybride</button>
+  </div>
+</div>
+
+<!-- Stacks Table -->
+<div class="card mb-6">
+  <div class="card-header">
+    <span class="card-title">⬢ Stacks Heat</span>
+    <span class="text-xs text-muted" id="stacks-count">Chargement...</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Nom</th><th>Status</th><th>Description</th><th>Créée</th><th>Mise à jour</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="stacks-tbody">
+        <tr><td colspan="6"><div class="loading-state"><div class="spinner"></div> Chargement...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Stack Detail Panel -->
+<div id="stack-detail-panel" style="display:none">
+  <div class="card mb-6">
+    <div class="card-header">
+      <span class="card-title">◈ Ressources de la Stack : <span id="detail-stack-name" class="text-cyan">—</span></span>
+      <button class="btn btn-ghost btn-sm" onclick="closeDetail()">✕ Fermer</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <div style="border-right:1px solid var(--border)">
+        <div style="padding:10px 16px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border)">Ressources</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ressource</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody id="resources-tbody">
+              <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="padding:10px 16px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border)">Événements récents</div>
+        <div style="padding:12px;max-height:300px;overflow-y:auto" id="events-list">
+          <div class="loading-state"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Stack Hybride ──────────────────── -->
+<div class="modal-backdrop" id="modal-hybrid-stack">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <span class="modal-title">⬢ Déployer une Stack Hybride (VM + Cluster)</span>
+      <button class="modal-close" onclick="closeModal('modal-hybrid-stack')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px;padding:10px 14px;background:rgba(0,255,157,0.05);border:1px solid rgba(0,255,157,0.15);border-radius:4px;font-size:11px;color:var(--text-muted)">
+        ⚡ Cette stack déploie <strong style="color:var(--text-primary)">simultanément</strong> une VM classique Nova et un cluster Magnum, liés dans une même stack Heat (HOT).
+      </div>
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label class="form-label">Nom de la Stack *</label>
+          <input type="text" class="form-control" id="hs-name" placeholder="ex: hybrid-prod-stack">
+        </div>
+        <div class="form-group form-full">
+          <label class="form-label">Cluster Template *</label>
+          <select class="form-control" id="hs-template">
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom du Cluster</label>
+          <input type="text" class="form-control" id="hs-cluster-name" placeholder="hybrid-cluster">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Keypair *</label>
+          <select class="form-control" id="hs-keypair">
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Masters</label>
+          <input type="number" class="form-control" id="hs-masters" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Workers</label>
+          <input type="number" class="form-control" id="hs-nodes" value="2" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Flavor VM</label>
+          <select class="form-control" id="hs-flavor">
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Image VM</label>
+          <select class="form-control" id="hs-image">
+            <option value="">Chargement...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Timeout (min)</label>
+          <input type="number" class="form-control" id="hs-timeout" value="60" min="10">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-hybrid-stack')">Annuler</button>
+      <button class="btn btn-primary" onclick="createHybridStack()" id="btn-create-hs">⬢ Déployer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Stack Personnalisée ───────────── -->
+<div class="modal-backdrop" id="modal-custom-stack">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <span class="modal-title">+ Stack Heat Personnalisée</span>
+      <button class="modal-close" onclick="closeModal('modal-custom-stack')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group mb-4">
+        <label class="form-label">Nom de la Stack *</label>
+        <input type="text" class="form-control" id="cs-name" placeholder="ex: ma-stack-custom">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;justify-content:space-between">
+          <span>Template HOT (YAML) *</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadHybridTemplate()" style="font-size:10px;padding:2px 8px">Charger template hybride</button>
+        </label>
+        <textarea class="form-control" id="cs-template" rows="16" placeholder="heat_template_version: 2021-04-16&#10;description: Mon template&#10;..." style="font-size:11px;font-family:var(--font-mono)"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-custom-stack')">Annuler</button>
+      <button class="btn btn-primary" onclick="createCustomStack()" id="btn-create-cs">+ Déployer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let detailStackId = null;
+
+async function loadData() {
+  await Promise.all([loadStacks(), loadResources()]);
+}
+
+async function loadStacks() {
+  const tbody = document.getElementById('stacks-tbody');
+  try {
+    const d = await api('GET', '/api/stacks/');
+    const stacks = d.stacks || [];
+    document.getElementById('stacks-count').textContent = `${stacks.length} stack(s)`;
+    if (!stacks.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">⬢</div><p>Aucune stack Heat</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = stacks.map(s => `
+      <tr>
+        <td>
+          <div style="font-weight:600">${s.name}</div>
+          <div class="text-xs text-muted mono">${s.id?.substring(0,14) || '—'}...</div>
+        </td>
+        <td>${statusBadge(s.status)}</td>
+        <td class="text-muted truncate" style="max-width:180px">${s.description || '—'}</td>
+        <td class="text-muted">${timeAgo(s.created_at)}</td>
+        <td class="text-muted">${timeAgo(s.updated_at)}</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn btn-ghost btn-sm" onclick="showStackDetail('${s.id}','${s.name}')">◈ Détail</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteStack('${s.id}','${s.name}')">✕</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted" style="padding:20px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadResources() {
+  try {
+    const [templates, keypairs, flavors, images] = await Promise.all([
+      api('GET', '/api/templates/'),
+      api('GET', '/api/monitoring/resources/keypairs'),
+      api('GET', '/api/monitoring/resources/flavors'),
+      api('GET', '/api/monitoring/resources/images'),
+    ]);
+    const tOpts = (templates.templates || []).map(t => `<option value="${t.id}">[${t.coe}] ${t.name}</option>`).join('');
+    document.getElementById('hs-template').innerHTML = tOpts || '<option>Aucun template</option>';
+
+    const kOpts = `<option value="">— Sélectionner —</option>` + (keypairs.keypairs || []).map(k => `<option value="${k.name}">${k.name}</option>`).join('');
+    document.getElementById('hs-keypair').innerHTML = kOpts;
+
+    const fOpts = (flavors.flavors || []).map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+    document.getElementById('hs-flavor').innerHTML = fOpts;
+
+    const iOpts = (images.images || []).map(i => `<option value="${i.name}">${i.name}</option>`).join('');
+    document.getElementById('hs-image').innerHTML = iOpts;
+  } catch(e) { console.error(e); }
+}
+
+async function createHybridStack() {
+  const btn = document.getElementById('btn-create-hs');
+  const name = document.getElementById('hs-name').value.trim();
+  const template = document.getElementById('hs-template').value;
+  const keypair = document.getElementById('hs-keypair').value;
+  if (!name || !template || !keypair) { toast('Nom, template et keypair requis', 'error'); return; }
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Déploiement...';
+  try {
+    await api('POST', '/api/stacks/hybrid', {
+      stack_name: name,
+      cluster_template_id: template,
+      cluster_name: document.getElementById('hs-cluster-name').value || 'hybrid-cluster',
+      keypair,
+      master_count: +document.getElementById('hs-masters').value,
+      node_count: +document.getElementById('hs-nodes').value,
+      vm_flavor: document.getElementById('hs-flavor').value,
+      vm_image: document.getElementById('hs-image').value,
+      timeout_mins: +document.getElementById('hs-timeout').value,
+    });
+    toast(`Stack hybride "${name}" en cours de déploiement`, 'success');
+    closeModal('modal-hybrid-stack');
+    setTimeout(loadStacks, 3000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '⬢ Déployer'; }
+}
+
+async function createCustomStack() {
+  const btn = document.getElementById('btn-create-cs');
+  const name = document.getElementById('cs-name').value.trim();
+  const template = document.getElementById('cs-template').value.trim();
+  if (!name || !template) { toast('Nom et template requis', 'error'); return; }
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+  try {
+    await api('POST', '/api/stacks/custom', { stack_name: name, template });
+    toast(`Stack "${name}" déployée`, 'success');
+    closeModal('modal-custom-stack');
+    setTimeout(loadStacks, 3000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '+ Déployer'; }
+}
+
+async function loadHybridTemplate() {
+  try {
+    const d = await api('GET', '/api/stacks/template/hybrid');
+    document.getElementById('cs-template').value = d.template;
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+}
+
+async function showStackDetail(id, name) {
+  detailStackId = id;
+  document.getElementById('detail-stack-name').textContent = name;
+  document.getElementById('stack-detail-panel').style.display = 'block';
+  document.getElementById('resources-tbody').innerHTML = `<tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>`;
+  document.getElementById('events-list').innerHTML = `<div class="loading-state"><div class="spinner"></div></div>`;
+  document.getElementById('stack-detail-panel').scrollIntoView({ behavior: 'smooth' });
+
+  try {
+    const [res, evts] = await Promise.all([
+      api('GET', `/api/stacks/${id}/resources`),
+      api('GET', `/api/stacks/${id}/events`),
+    ]);
+    document.getElementById('resources-tbody').innerHTML = (res.resources || []).map(r => `
+      <tr>
+        <td>${r.name}</td>
+        <td class="text-muted text-xs truncate" style="max-width:140px" title="${r.type}">${r.type?.split('::').pop()}</td>
+        <td>${statusBadge(r.status)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" class="text-muted" style="padding:16px">Aucune ressource</td></tr>`;
+
+    document.getElementById('events-list').innerHTML = (evts.events || []).reverse().map(e => `
+      <div style="padding:7px 0;border-bottom:1px solid var(--border);font-size:11px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="color:var(--text-primary)">${e.resource_name}</span>
+          <span class="text-muted">${timeAgo(e.time)}</span>
+        </div>
+        <div>${statusBadge(e.status)}</div>
+        ${e.reason ? `<div class="text-xs text-muted" style="margin-top:3px">${e.reason}</div>` : ''}
+      </div>
+    `).join('') || `<div class="text-muted text-xs" style="padding:16px">Aucun événement</div>`;
+  } catch(e) { toast(`Erreur détails : ${e.message}`, 'error'); }
+}
+
+function closeDetail() {
+  document.getElementById('stack-detail-panel').style.display = 'none';
+}
+
+async function deleteStack(id, name) {
+  if (!confirm(`Supprimer la stack "${name}" ?\nToutes les ressources associées seront détruites (VMs, clusters, réseaux).`)) return;
+  try {
+    await api('DELETE', `/api/stacks/${id}`);
+    toast(`Stack "${name}" suppression lancée`, 'warn');
+    closeDetail();
+    setTimeout(loadStacks, 2000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+}
+
+loadData();
+setInterval(loadStacks, 25000);
+</script>
+{% endblock %}
