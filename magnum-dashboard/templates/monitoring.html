@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}Monitoring{% endblock %}
+{% block page_title %}Monitoring & Observabilité{% endblock %}
+{% block breadcrumb %}Aodh / Gnocchi / Nova{% endblock %}
+
+{% block content %}
+<!-- Compute Quotas -->
+<div class="card mb-6">
+  <div class="card-header">
+    <span class="card-title">◈ Quotas Compute (Nova)</span>
+    <button class="btn btn-ghost btn-sm" onclick="loadCompute()">↻</button>
+  </div>
+  <div class="card-body" id="compute-section">
+    <div class="loading-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- Two-col layout -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+
+  <!-- Servers -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">▣ Instances Nova</span>
+      <span class="text-xs text-muted" id="servers-count">—</span>
+    </div>
+    <div class="table-wrap" style="max-height:340px;overflow-y:auto">
+      <table>
+        <thead><tr><th>Nom</th><th>Status</th><th>Flavor</th><th>Créée</th></tr></thead>
+        <tbody id="servers-tbody">
+          <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alarms -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">◉ Alarmes Aodh</span>
+      <button class="btn btn-success btn-sm" onclick="openModal('modal-create-alarm')">+ Alarme</button>
+    </div>
+    <div class="table-wrap" style="max-height:340px;overflow-y:auto">
+      <table>
+        <thead><tr><th>Nom</th><th>État</th><th>Activée</th><th>Actions</th></tr></thead>
+        <tbody id="alarms-tbody">
+          <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Networks and Images -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⬡ Réseaux Neutron</span>
+      <span class="text-xs text-muted" id="nets-count">—</span>
+    </div>
+    <div class="table-wrap" style="max-height:280px;overflow-y:auto">
+      <table>
+        <thead><tr><th>Nom</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody id="nets-tbody">
+          <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">◻ Images Glance</span>
+      <span class="text-xs text-muted" id="imgs-count">—</span>
+    </div>
+    <div class="table-wrap" style="max-height:280px;overflow-y:auto">
+      <table>
+        <thead><tr><th>Nom</th><th>Format</th><th>Taille</th></tr></thead>
+        <tbody id="imgs-tbody">
+          <tr><td colspan="3"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Créer Alarme ──────────────────── -->
+<div class="modal-backdrop" id="modal-create-alarm">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">◉ Nouvelle Alarme Aodh</span>
+      <button class="modal-close" onclick="closeModal('modal-create-alarm')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px;padding:10px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.15);border-radius:4px;font-size:11px;color:var(--text-muted)">
+        ⚠ Les alarmes Aodh déclenchent des actions automatiques (scaling, notifications) sur dépassement de seuil.
+      </div>
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label class="form-label">Nom de l'Alarme *</label>
+          <input type="text" class="form-control" id="a-name" placeholder="ex: cpu-high-cluster-prod">
+        </div>
+        <div class="form-group form-full">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-control" id="a-desc" placeholder="Alarme CPU haute utilisation">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Métrique</label>
+          <select class="form-control" id="a-metric">
+            <option value="cpu">CPU (cpu)</option>
+            <option value="memory.usage">Mémoire (memory.usage)</option>
+            <option value="disk.read.bytes">Disque lecture</option>
+            <option value="network.incoming.bytes">Réseau entrant</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Opérateur</label>
+          <select class="form-control" id="a-operator">
+            <option value="gt">Supérieur à (>)</option>
+            <option value="lt">Inférieur à (<)</option>
+            <option value="ge">Supérieur ou égal (≥)</option>
+            <option value="le">Inférieur ou égal (≤)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Seuil (valeur)</label>
+          <input type="number" class="form-control" id="a-threshold" value="80" step="any">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sévérité</label>
+          <select class="form-control" id="a-severity">
+            <option value="low">Faible</option>
+            <option value="moderate" selected>Modérée</option>
+            <option value="critical">Critique</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-alarm')">Annuler</button>
+      <button class="btn btn-success" onclick="createAlarm()" id="btn-create-alarm">◉ Créer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadData() {
+  await Promise.all([loadCompute(), loadServers(), loadAlarms(), loadNetworks(), loadImages()]);
+}
+
+async function loadCompute() {
+  try {
+    const d = await api('GET', '/api/monitoring/compute');
+    if (d.error) throw new Error(d.error);
+    const section = document.getElementById('compute-section');
+    const metrics = [
+      { label: 'vCPU', used: d.vcpus?.used, total: d.vcpus?.total, unit: 'cores' },
+      { label: 'RAM', used: d.ram?.used, total: d.ram?.total, unit: 'Mo' },
+      { label: 'Instances', used: d.instances?.used, total: d.instances?.total, unit: 'VMs' },
+    ];
+    section.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">` +
+      metrics.map(m => {
+        const pct = m.total > 0 ? Math.round((m.used / m.total) * 100) : 0;
+        const color = pct > 85 ? 'var(--status-err)' : pct > 60 ? 'var(--status-warn)' : 'var(--accent-cyan)';
+        return `<div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+            <span style="font-family:var(--font-display);font-weight:700;font-size:13px">${m.label}</span>
+            <span style="font-size:24px;font-family:var(--font-display);font-weight:800;color:${color}">${pct}%</span>
+          </div>
+          <div class="progress" style="height:6px"><div class="progress-bar" style="width:${pct}%;background:${color}"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--text-muted)">
+            <span>Utilisé : ${m.used ?? '?'} ${m.unit}</span>
+            <span>Total : ${m.total ?? '?'} ${m.unit}</span>
+          </div>
+        </div>`;
+      }).join('') + `</div>`;
+  } catch(e) {
+    document.getElementById('compute-section').innerHTML = `<div class="text-muted text-xs">${e.message}</div>`;
+  }
+}
+
+async function loadServers() {
+  const tbody = document.getElementById('servers-tbody');
+  try {
+    const d = await api('GET', '/api/monitoring/servers');
+    const servers = d.servers || [];
+    document.getElementById('servers-count').textContent = `${servers.length} instance(s)`;
+    if (!servers.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">▣</div><p>Aucune instance</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = servers.map(s => `
+      <tr>
+        <td>
+          <div style="font-weight:600;font-size:12px">${s.name}</div>
+          <div class="text-xs text-muted">${Object.values(s.addresses || {}).flat().join(', ') || '—'}</div>
+        </td>
+        <td>${statusBadge(s.status)}</td>
+        <td class="text-muted">${s.flavor || '—'}</td>
+        <td class="text-muted">${timeAgo(s.created_at)}</td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted" style="padding:16px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadAlarms() {
+  const tbody = document.getElementById('alarms-tbody');
+  try {
+    const d = await api('GET', '/api/monitoring/alarms');
+    const alarms = d.alarms || [];
+    if (!alarms.length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">◉</div><p>Aucune alarme</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = alarms.map(a => `
+      <tr>
+        <td>
+          <div style="font-weight:600;font-size:12px">${a.name}</div>
+          <div class="text-xs text-muted">${a.description || '—'}</div>
+        </td>
+        <td>${statusBadge(a.state)}</td>
+        <td>${a.enabled ? '<span class="badge badge-ok">Oui</span>' : '<span class="badge badge-muted">Non</span>'}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteAlarm('${a.id}','${a.name}')">✕</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted" style="padding:16px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadNetworks() {
+  const tbody = document.getElementById('nets-tbody');
+  try {
+    const d = await api('GET', '/api/monitoring/resources/networks');
+    const nets = d.networks || [];
+    document.getElementById('nets-count').textContent = `${nets.length} réseau(x)`;
+    tbody.innerHTML = nets.map(n => `
+      <tr>
+        <td style="font-weight:600">${n.name}</td>
+        <td>${n.external ? '<span class="badge badge-warn">Externe</span>' : '<span class="badge badge-muted">Interne</span>'}</td>
+        <td>${statusBadge(n.status)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" class="text-muted" style="padding:16px">Aucun réseau</td></tr>`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" class="text-muted" style="padding:16px">${e.message}</td></tr>`;
+  }
+}
+
+async function loadImages() {
+  const tbody = document.getElementById('imgs-tbody');
+  try {
+    const d = await api('GET', '/api/monitoring/resources/images');
+    const imgs = d.images || [];
+    document.getElementById('imgs-count').textContent = `${imgs.length} image(s)`;
+    tbody.innerHTML = imgs.map(i => `
+      <tr>
+        <td style="font-weight:600">${i.name}</td>
+        <td class="text-muted">${i.disk_format || '—'}</td>
+        <td class="text-muted">${i.size ? (i.size/1024/1024).toFixed(0) + ' Mo' : '—'}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" class="text-muted" style="padding:16px">Aucune image</td></tr>`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" class="text-muted" style="padding:16px">${e.message}</td></tr>`;
+  }
+}
+
+async function createAlarm() {
+  const btn = document.getElementById('btn-create-alarm');
+  const name = document.getElementById('a-name').value.trim();
+  if (!name) { toast('Nom requis', 'error'); return; }
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+  try {
+    await api('POST', '/api/monitoring/alarms', {
+      name,
+      description: document.getElementById('a-desc').value,
+      metric: document.getElementById('a-metric').value,
+      operator: document.getElementById('a-operator').value,
+      threshold: +document.getElementById('a-threshold').value,
+      severity: document.getElementById('a-severity').value,
+    });
+    toast(`Alarme "${name}" créée`, 'success');
+    closeModal('modal-create-alarm');
+    loadAlarms();
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = '◉ Créer'; }
+}
+
+async function deleteAlarm(id, name) {
+  if (!confirm(`Supprimer l'alarme "${name}" ?`)) return;
+  try {
+    await api('DELETE', `/api/monitoring/alarms/${id}`);
+    toast(`Alarme "${name}" supprimée`, 'warn');
+    loadAlarms();
+  } catch(e) { toast(`Erreur : ${e.message}`, 'error'); }
+}
+
+loadData();
+setInterval(() => { loadServers(); loadAlarms(); }, 30000);
+</script>
+{% endblock %}
