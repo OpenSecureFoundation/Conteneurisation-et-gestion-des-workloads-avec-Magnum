@@ -8,8 +8,6 @@ Projet de conteneurisation et gestion des workloads avec OpenStack Magnum
 
 • Intégrer Magnum avec Heat pour orchestrer des infrastructures hybrides VM + conteneurs
 
-# NB: README à mettre à jour progressivement par l'équipe.
-
 ## pour ce projet nous avons preferer utiliser l'environnement DevStack car nous nous trouvons dans un contexte de développement, de test et d'apprentissage. DevStack n'est pas une distribution pour la production, mais c'est l'outil de référence pour expérimenter les fonctionnalités avancées d'OpenStack.
 
 # Qu'est-ce qu'OpenStack?
