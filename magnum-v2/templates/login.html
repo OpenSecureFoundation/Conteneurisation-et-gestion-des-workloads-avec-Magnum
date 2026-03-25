@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MagnumDash — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #06090f;
+  --surface:   #0c1322;
+  --surface2:  #101b2e;
+  --border:    #1c2d48;
+  --borderhi:  #234070;
+  --cyan:      #00c8f0;
+  --teal:      #00e8a0;
+  --red:       #f03a5f;
+  --txt:       #ddeeff;
+  --txt2:      #7896b8;
+  --txt3:      #3a5a7a;
+  --font-ui:   'Syne', sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  font-family: var(--font-code);
+  font-size: 15px;           /* BASE agrandi */
+  color: var(--txt);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── Arrière-plan animé ───────────────────────── */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,200,240,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,240,.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: drift 24s linear infinite;
+}
+@keyframes drift { to { background-position: 48px 48px; } }
+
+.orb {
+  position: fixed; border-radius: 50%;
+  filter: blur(90px); opacity: .13; pointer-events: none;
+}
+.orb-a { width: 600px; height: 600px; background: var(--cyan);
+         top: -180px; left: -120px; animation: fa 9s ease-in-out infinite; }
+.orb-b { width: 480px; height: 480px; background: var(--teal);
+         bottom: -120px; right: -100px; animation: fb 11s ease-in-out infinite; }
+@keyframes fa { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,28px)} }
+@keyframes fb { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-28px,-36px)} }
+
+/* ── Layout ───────────────────────────────────── */
+.page {
+  position: relative; z-index: 10;
+  width: 100%; max-width: 460px;
+  padding: 24px;
+  animation: up 420ms cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes up { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── Logo ─────────────────────────────────────── */
+.logo-area { text-align: center; margin-bottom: 36px; }
+
+.logo-hex {
+  width: 72px; height: 72px;
+  background: linear-gradient(140deg, var(--cyan) 0%, var(--teal) 100%);
+  border-radius: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 34px; margin-bottom: 16px;
+  box-shadow: 0 0 48px rgba(0,200,240,.28);
+}
+.logo-name {
+  font-family: var(--font-ui);
+  font-size: 30px; font-weight: 800;
+  color: var(--txt); letter-spacing: -1px;
+}
+.logo-tag {
+  font-size: 12px; color: var(--txt3);
+  letter-spacing: 3px; text-transform: uppercase;
+  margin-top: 5px;
+}
+
+/* ── Card ─────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 28px 72px rgba(0,0,0,.55),
+              0 0 0 1px rgba(0,200,240,.04);
+}
+
+.card-head {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,200,240,.03);
+}
+.card-head-title {
+  font-family: var(--font-ui);
+  font-size: 17px; font-weight: 700;
+  color: var(--txt);
+}
+.card-head-sub {
+  font-size: 13px; color: var(--txt2); margin-top: 3px;
+}
+
+.card-body { padding: 32px 28px; }
+
+/* ── Erreur ───────────────────────────────────── */
+.alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(240,58,95,.09);
+  border: 1px solid rgba(240,58,95,.32);
+  border-radius: 8px;
+  padding: 13px 16px;
+  font-size: 14px; color: var(--red);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.alert-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+
+/* ── Champs ───────────────────────────────────── */
+.field { margin-bottom: 22px; }
+
+.field-label {
+  display: block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase;
+  color: var(--txt3); margin-bottom: 8px;
+}
+
+.field-wrap { position: relative; }
+
+.field-icon {
+  position: absolute; left: 14px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px; color: var(--txt3);
+  pointer-events: none; transition: color 160ms;
+}
+
+.field-wrap:focus-within .field-icon { color: var(--cyan); }
+
+.field-input {
+  width: 100%;
+  background: #07101c;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px 16px 13px 44px;
+  font-family: var(--font-code);
+  font-size: 15px;               /* agrandi */
+  color: var(--txt);
+  outline: none;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+.field-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(0,200,240,.12);
+}
+.field-input::placeholder { color: var(--txt3); font-size: 14px; }
+
+.pw-eye {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--txt3); font-size: 15px;
+  padding: 4px 8px; border-radius: 6px;
+  transition: color 160ms;
+}
+.pw-eye:hover { color: var(--txt2); }
+
+/* ── Bouton ───────────────────────────────────── */
+.btn-connect {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--cyan), #0099bb);
+  color: #030810;
+  border: none; border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 16px; font-weight: 700;       /* gros et gras */
+  letter-spacing: .3px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform 140ms, box-shadow 140ms, opacity 140ms;
+}
+.btn-connect:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,200,240,.32); }
+.btn-connect:active { transform: translateY(0); }
+.btn-connect:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── Barre OS ─────────────────────────────────── */
+.os-bar {
+  margin-top: 22px;
+  padding: 11px 18px;
+  background: rgba(0,200,240,.03);
+  border: 1px solid rgba(0,200,240,.09);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--txt3);
+}
+.os-dot {
+  display: inline-block;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--teal);
+  animation: pulse 2.2s infinite; margin-right: 7px;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.os-chip {
+  background: rgba(0,200,240,.08);
+  border: 1px solid rgba(0,200,240,.14);
+  border-radius: 4px; padding: 2px 9px;
+  color: var(--cyan); font-size: 11px;
+}
+
+/* ── Pied ─────────────────────────────────────── */
+.footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 12px; color: var(--txt3); line-height: 1.9;
+}
+
+/* ── Spinner ──────────────────────────────────── */
+.spin {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(3,8,16,.3);
+  border-top-color: #030810;
+  border-radius: 50%;
+  animation: rot .6s linear infinite;
+}
+@keyframes rot { to{ transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="orb orb-a"></div>
+<div class="orb orb-b"></div>
+
+<div class="page">
+
+  <!-- Logo -->
+  <div class="logo-area">
+    <div class="logo-hex">⚡</div>
+    <div class="logo-name">MagnumDash</div>
+    <div class="logo-tag">OpenStack Container Manager</div>
+  </div>
+
+  <!-- Carte de connexion -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">Authentification requise</div>
+      <div class="card-head-sub">Connectez-vous avec vos identifiants OpenStack</div>
+    </div>
+
+    <div class="card-body">
+
+      {% if error %}
+      <div class="alert">
+        <span class="alert-icon">✕</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="/login" id="frm" autocomplete="on">
+
+        <div class="field">
+          <label class="field-label" for="inp-user">Nom d'utilisateur</label>
+          <div class="field-wrap">
+            <span class="field-icon">◈</span>
+            <input
+              id="inp-user" name="username" type="text"
+              class="field-input"
+              placeholder="admin"
+              value="{{ request.form.get('username', '') }}"
+              autocomplete="username"
+              required autofocus
+            >
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="inp-pw">Mot de passe</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔑</span>
+            <input
+              id="inp-pw" name="password" type="password"
+              class="field-input"
+              placeholder="••••••••••••"
+              autocomplete="current-password"
+              required
+            >
+            <button type="button" class="pw-eye" id="eye" onclick="togglePw()" title="Voir / masquer">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-connect" id="btn">
+          <span id="btn-lbl">→ Se connecter</span>
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Barre statut OpenStack -->
+  <div class="os-bar">
+    <div><span class="os-dot"></span>OpenStack Keystone</div>
+    <div><span class="os-chip">controller:5000/v3</span>&nbsp;<span class="os-chip">Identity v3</span></div>
+  </div>
+
+  <div class="footer">
+    Université Saint Jean &mdash; MagnumDash v2.0<br>
+    Authentification sécurisée via <span style="color:var(--cyan)">OpenStack Keystone</span>
+  </div>
+
+</div>
+
+<script>
+function togglePw() {
+  const i = document.getElementById('inp-pw');
+  const e = document.getElementById('eye');
+  i.type = i.type === 'password' ? 'text' : 'password';
+  e.textContent = i.type === 'password' ? '👁' : '🙈';
+}
+document.getElementById('frm').addEventListener('submit', () => {
+  const b = document.getElementById('btn');
+  b.disabled = true;
+  document.getElementById('btn-lbl').innerHTML = '<div class="spin"></div> Vérification...';
+});
+</script>
+</body>
+</html>
