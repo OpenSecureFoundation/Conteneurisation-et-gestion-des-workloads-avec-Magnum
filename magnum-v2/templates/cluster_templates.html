@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Templates{% endblock %}
+{% block page_title %}Cluster Templates{% endblock %}
+{% block breadcrumb %}Magnum › Templates{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <span class="text-muted text-sm">Modèles de configuration pour la création de clusters.</span>
+  <button class="btn btn-primary" onclick="openModal('m-create')">+ Nouveau Template</button>
+</div>
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">◻ Cluster Templates</span>
+    <span class="text-muted text-sm" id="count-lbl">Chargement...</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nom / ID</th><th>COE</th><th>Image</th><th>Flavor Worker</th><th>Flavor Master</th><th>Réseau</th><th>Volume</th><th>Public</th><th>Actions</th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="9"><div class="loading-state"><div class="spinner"></div> Chargement...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="m-create">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><span class="modal-title">◻ Nouveau Cluster Template</span><button class="modal-close" onclick="closeModal('m-create')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group form-full"><label class="form-label">Nom *</label><input type="text" class="form-control" id="t-name" placeholder="ex: k8s-template-prod"></div>
+        <div class="form-group"><label class="form-label">COE *</label>
+          <select class="form-control" id="t-coe"><option value="kubernetes">Kubernetes</option><option value="swarm-mode">Docker Swarm</option></select></div>
+        <div class="form-group"><label class="form-label">Image OS *</label><select class="form-control" id="t-image"><option value="">Chargement...</option></select></div>
+        <div class="form-group"><label class="form-label">Flavor Worker</label><select class="form-control" id="t-flavor"><option value="">Chargement...</option></select></div>
+        <div class="form-group"><label class="form-label">Flavor Master</label><select class="form-control" id="t-mflavor"><option value="">Chargement...</option></select></div>
+        <div class="form-group"><label class="form-label">Driver Réseau</label>
+          <select class="form-control" id="t-netdrv"><option value="flannel">Flannel</option><option value="calico">Calico</option></select></div>
+        <div class="form-group"><label class="form-label">Réseau Externe</label><select class="form-control" id="t-extnet"><option value="">Chargement...</option></select></div>
+        <div class="form-group"><label class="form-label">DNS</label><input type="text" class="form-control" id="t-dns" value="8.8.8.8"></div>
+        <div class="form-group"><label class="form-label">Volume Docker (Go)</label><input type="number" class="form-control" id="t-vol" value="50" min="20"></div>
+        <div class="form-group"><label class="form-label">Keypair</label><select class="form-control" id="t-kp"><option value="">— Aucune —</option></select></div>
+        <div class="form-group" style="align-self:end">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:var(--txt2)"><input type="checkbox" id="t-pub"> Template public</label>
+        </div>
+        <div class="form-group" style="align-self:end">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:var(--txt2)"><input type="checkbox" id="t-fip" checked> IP flottante</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-create')">Annuler</button>
+      <button class="btn btn-primary" onclick="createTemplate()" id="btn-create">◻ Créer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="m-detail">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><span class="modal-title">◻ Détail Template</span><button class="modal-close" onclick="closeModal('m-detail')">✕</button></div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('m-detail')">Fermer</button></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}<script>
+async function loadData() {
+  await Promise.all([loadTemplates(), loadResources()]);
+}
+
+async function loadTemplates() {
+  const tb = document.getElementById('tbody');
+  try {
+    const d = await api('GET', '/api/templates/');
+    const list = d.templates || [];
+    document.getElementById('count-lbl').textContent = `${list.length} template(s)`;
+    if (!list.length) { tb.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="ico">◻</div><p>Aucun template défini</p></div></td></tr>`; return; }
+    tb.innerHTML = list.map(t => `<tr>
+      <td><div style="font-size:14px;font-weight:700">${t.name}</div><div class="text-xs text-muted mono trunc" title="${t.id}">${t.id}</div></td>
+      <td><span class="badge b-info">${t.coe}</span></td>
+      <td class="text-muted trunc" title="${t.image_id}" style="max-width:120px">${(t.image_id||'—').substring(0,14)}…</td>
+      <td class="text-muted">${t.flavor_id||'—'}</td>
+      <td class="text-muted">${t.master_flavor_id||'—'}</td>
+      <td class="text-muted">${t.network_driver||'—'}</td>
+      <td class="text-muted">${t.docker_volume_size?t.docker_volume_size+' Go':'—'}</td>
+      <td>${t.public?'<span class="badge b-ok">Oui</span>':'<span class="badge b-mute">Non</span>'}</td>
+      <td><div class="flex gap-2">
+        <button class="btn btn-ghost btn-sm" onclick='showDetail(${JSON.stringify(t).replace(/"/g,"&quot;")})'>◉</button>
+        <button class="btn btn-danger btn-sm" onclick="delTemplate('${t.id}','${t.name}')">✕</button>
+      </div></td>
+    </tr>`).join('');
+  } catch(e) { tb.innerHTML=`<tr><td colspan="9" class="text-muted" style="padding:20px">${e.message}</td></tr>`; }
+}
+
+async function loadResources() {
+  try {
+    const [imgs,flavors,nets,kps] = await Promise.all([
+      api('GET','/api/monitoring/resources/images'), api('GET','/api/monitoring/resources/flavors'),
+      api('GET','/api/monitoring/resources/networks'), api('GET','/api/monitoring/resources/keypairs')]);
+    document.getElementById('t-image').innerHTML=(imgs.images||[]).map(i=>`<option value="${i.id}">${i.name}</option>`).join('')||'<option>Aucune image</option>';
+    const fo=(flavors.flavors||[]).map(f=>`<option value="${f.id}">${f.name} (${f.vcpus}vCPU ${f.ram}Mo)</option>`).join('');
+    document.getElementById('t-flavor').innerHTML=fo; document.getElementById('t-mflavor').innerHTML=fo;
+    document.getElementById('t-extnet').innerHTML=(nets.networks||[]).filter(n=>n.external).map(n=>`<option value="${n.id}">${n.name}</option>`).join('')||'<option>Aucun réseau externe</option>';
+    document.getElementById('t-kp').innerHTML=`<option value="">— Aucune —</option>`+(kps.keypairs||[]).map(k=>`<option value="${k.name}">${k.name}</option>`).join('');
+  } catch {}
+}
+
+async function createTemplate() {
+  const btn=document.getElementById('btn-create');
+  const name=document.getElementById('t-name').value.trim();
+  const image_id=document.getElementById('t-image').value;
+  if (!name||!image_id) { toast('Nom et image requis','err'); return; }
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div>';
+  try {
+    await api('POST','/api/templates/',{ name, image_id, coe:document.getElementById('t-coe').value,
+      flavor_id:document.getElementById('t-flavor').value, master_flavor_id:document.getElementById('t-mflavor').value,
+      network_driver:document.getElementById('t-netdrv').value, external_network_id:document.getElementById('t-extnet').value,
+      dns_nameserver:document.getElementById('t-dns').value, docker_volume_size:+document.getElementById('t-vol').value,
+      keypair_id:document.getElementById('t-kp').value, public:document.getElementById('t-pub').checked,
+      floating_ip_enabled:document.getElementById('t-fip').checked });
+    toast(`Template "${name}" créé`,'ok'); closeModal('m-create'); loadTemplates();
+  } catch(e) { toast(`Erreur : ${e.message}`,'err'); }
+  finally { btn.disabled=false; btn.innerHTML='◻ Créer'; }
+}
+
+function showDetail(t) {
+  const row=(l,v)=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px"><span class="text-muted">${l}</span><span style="color:var(--txt);text-align:right;max-width:280px;word-break:break-all">${v??'—'}</span></div>`;
+  document.getElementById('detail-body').innerHTML=[
+    row('ID',`<span class="mono text-xs">${t.id}</span>`), row('Nom',t.name), row('COE',t.coe),
+    row('Image',t.image_id), row('Flavor Worker',t.flavor_id), row('Flavor Master',t.master_flavor_id),
+    row('Driver Réseau',t.network_driver), row('Volume Docker',t.docker_volume_size?t.docker_volume_size+' Go':'—'),
+    row('Public',t.public?'✓ Oui':'✗ Non'), row('Créé le',t.created_at)].join('');
+  openModal('m-detail');
+}
+
+async function delTemplate(id,name) {
+  if (!confirm(`Supprimer le template "${name}" ?`)) return;
+  try { await api('DELETE',`/api/templates/${id}`); toast(`Template supprimé`,'warn'); loadTemplates(); }
+  catch(e) { toast(`Erreur : ${e.message}`,'err'); }
+}
+loadData();
+</script>{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Clusters{% endblock %}
+{% block page_title %}Gestion des Clusters{% endblock %}
+{% block breadcrumb %}Magnum › Clusters{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <input type="text" class="form-control" id="search" placeholder="Rechercher un cluster..." style="width:260px" oninput="filterList()">
+  <button class="btn btn-primary" onclick="openModal('m-create')">+ Nouveau Cluster</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">⬡ Clusters Magnum</span>
+    <span class="text-muted text-sm" id="count-lbl">Chargement...</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nom / ID</th><th>Status</th><th>Masters</th><th>Workers</th><th>Version</th><th>Créé</th><th>Actions</th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="7"><div class="loading-state"><div class="spinner"></div> Chargement...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Créer -->
+<div class="modal-backdrop" id="m-create">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">⬡ Créer un Cluster</span><button class="modal-close" onclick="closeModal('m-create')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group form-full"><label class="form-label">Nom *</label><input type="text" class="form-control" id="c-name" placeholder="ex: k8s-prod"></div>
+        <div class="form-group form-full"><label class="form-label">Cluster Template *</label><select class="form-control" id="c-tpl"><option value="">Chargement...</option></select></div>
+        <div class="form-group"><label class="form-label">Masters</label><input type="number" class="form-control" id="c-masters" value="1" min="1" max="5"></div>
+        <div class="form-group"><label class="form-label">Workers</label><input type="number" class="form-control" id="c-nodes" value="2" min="1" max="100"></div>
+        <div class="form-group form-full"><label class="form-label">Keypair SSH</label><select class="form-control" id="c-keypair"><option value="">— Aucune —</option></select></div>
+        <div class="form-group"><label class="form-label">Timeout (min)</label><input type="number" class="form-control" id="c-timeout" value="60" min="10"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-create')">Annuler</button>
+      <button class="btn btn-primary" onclick="createCluster()" id="btn-create">⬡ Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Scaling -->
+<div class="modal-backdrop" id="m-scale">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><span class="modal-title">↕ Scaling</span><button class="modal-close" onclick="closeModal('m-scale')">✕</button></div>
+    <div class="modal-body">
+      <p class="text-sm mb-4">Cluster : <strong class="text-cyan" id="sc-name">—</strong></p>
+      <p class="text-sm mb-4">Workers actuels : <span id="sc-cur">—</span></p>
+      <div class="form-group">
+        <label class="form-label">Nouveau nombre de Workers *</label>
+        <input type="number" class="form-control" id="sc-count" min="1" max="100">
+      </div>
+      <div style="margin-top:14px;padding:12px;background:rgba(0,200,240,.05);border:1px solid rgba(0,200,240,.15);border-radius:6px;font-size:13px;color:var(--txt2)">
+        ℹ Magnum envoie une requête PATCH à Nova pour ajouter/retirer des VMs automatiquement.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('m-scale')">Annuler</button>
+      <button class="btn btn-success" onclick="doScale()" id="btn-scale">↕ Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Kubeconfig -->
+<div class="modal-backdrop" id="m-kube">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><span class="modal-title">🔑 Kubeconfig</span><button class="modal-close" onclick="closeModal('m-kube')">✕</button></div>
+    <div class="modal-body">
+      <textarea class="form-control" id="kube-content" rows="18" readonly style="font-size:12px;background:#04080f"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="copyKube()">⎘ Copier</button>
+      <button class="btn btn-ghost" onclick="closeModal('m-kube')">Fermer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}<script>
+let all = [], scaleId = null;
+
+async function loadData() {
+  await Promise.all([loadClusters(), loadSelects()]);
+}
+
+async function loadClusters() {
+  const tb = document.getElementById('tbody');
+  try {
+    const d = await api('GET', '/api/clusters/');
+    all = d.clusters || [];
+    document.getElementById('count-lbl').textContent = `${all.length} cluster(s)`;
+    render(all);
+  } catch(e) { tb.innerHTML = `<tr><td colspan="7" class="text-muted" style="padding:20px">${e.message}</td></tr>`; }
+}
+
+function render(list) {
+  const tb = document.getElementById('tbody');
+  if (!list.length) { tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="ico">⬡</div><p>Aucun cluster Magnum trouvé</p></div></td></tr>`; return; }
+  tb.innerHTML = list.map(c => `<tr>
+    <td><div style="font-size:14px;font-weight:700">${c.name}</div><div class="text-xs text-muted mono trunc" title="${c.id}">${c.id}</div></td>
+    <td>${statusBadge(c.status)}</td>
+    <td><span class="text-cyan" style="font-weight:700">${c.master_count}</span></td>
+    <td><span class="text-cyan" style="font-weight:700">${c.node_count}</span></td>
+    <td class="text-muted">${c.coe_version || '—'}</td>
+    <td class="text-muted">${timeAgo(c.created_at)}</td>
+    <td><div class="flex gap-2">
+      <button class="btn btn-ghost btn-sm" onclick="openScale('${c.id}','${c.name}',${c.node_count})">↕ Scale</button>
+      <button class="btn btn-ghost btn-sm" onclick="getKube('${c.id}')">🔑</button>
+      <button class="btn btn-danger btn-sm" onclick="delCluster('${c.id}','${c.name}')">✕</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function filterList() {
+  const q = document.getElementById('search').value.toLowerCase();
+  render(all.filter(c => c.name.toLowerCase().includes(q)));
+}
+
+async function loadSelects() {
+  try {
+    const [t, k] = await Promise.all([api('GET','/api/templates/'), api('GET','/api/monitoring/resources/keypairs')]);
+    document.getElementById('c-tpl').innerHTML = (t.templates||[]).map(x=>`<option value="${x.id}">[${x.coe}] ${x.name}</option>`).join('') || '<option>Aucun template</option>';
+    document.getElementById('c-keypair').innerHTML = `<option value="">— Aucune —</option>` + (k.keypairs||[]).map(x=>`<option value="${x.name}">${x.name}</option>`).join('');
+  } catch {}
+}
+
+async function createCluster() {
+  const btn = document.getElementById('btn-create');
+  const name = document.getElementById('c-name').value.trim();
+  const tpl  = document.getElementById('c-tpl').value;
+  if (!name || !tpl) { toast('Nom et template requis', 'err'); return; }
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+  try {
+    await api('POST', '/api/clusters/', { name, cluster_template_id: tpl,
+      master_count: +document.getElementById('c-masters').value,
+      node_count: +document.getElementById('c-nodes').value,
+      keypair: document.getElementById('c-keypair').value,
+      create_timeout: +document.getElementById('c-timeout').value });
+    toast(`Cluster "${name}" en cours de création`, 'ok');
+    closeModal('m-create');
+    setTimeout(loadClusters, 3000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'err'); }
+  finally { btn.disabled=false; btn.innerHTML='⬡ Créer'; }
+}
+
+function openScale(id, name, cur) {
+  scaleId = id;
+  document.getElementById('sc-name').textContent = name;
+  document.getElementById('sc-cur').textContent  = cur;
+  document.getElementById('sc-count').value = cur;
+  openModal('m-scale');
+}
+
+async function doScale() {
+  const btn = document.getElementById('btn-scale');
+  const n = +document.getElementById('sc-count').value;
+  if (!n || n < 1) { toast('Valeur invalide', 'err'); return; }
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+  try {
+    await api('POST', `/api/clusters/${scaleId}/scale`, { node_count: n });
+    toast(`Scaling vers ${n} workers lancé`, 'ok');
+    closeModal('m-scale'); setTimeout(loadClusters, 3000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'err'); }
+  finally { btn.disabled=false; btn.innerHTML='↕ Appliquer'; }
+}
+
+async function getKube(id) {
+  document.getElementById('kube-content').value = 'Récupération...';
+  openModal('m-kube');
+  try {
+    const d = await api('GET', `/api/clusters/${id}/config`);
+    document.getElementById('kube-content').value = d.kubeconfig || d.error || '— Non disponible —';
+  } catch(e) { document.getElementById('kube-content').value = `Erreur : ${e.message}`; }
+}
+function copyKube() {
+  navigator.clipboard.writeText(document.getElementById('kube-content').value)
+    .then(() => toast('Kubeconfig copié !', 'ok'));
+}
+
+async function delCluster(id, name) {
+  if (!confirm(`Supprimer le cluster "${name}" ?\nToutes les ressources seront supprimées.`)) return;
+  try {
+    await api('DELETE', `/api/clusters/${id}`);
+    toast(`"${name}" suppression lancée`, 'warn');
+    setTimeout(loadClusters, 2000);
+  } catch(e) { toast(`Erreur : ${e.message}`, 'err'); }
+}
+
+loadData();
+setInterval(loadClusters, 20000);
+</script>{% endblock %}
